@@ -1,0 +1,17 @@
+{
+  "appId": "com.dissonance.wfarer.multisynth",
+  "appName": "MIDI Synth",
+  "webDir": "public",
+  "bundledWebRuntime": false,
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": true,
+    "backgroundColor": "#0F172A"
+  },
+  "plugins": {
+    "BackgroundAudio": {
+      "enabled": true
+    }
+  }
+}

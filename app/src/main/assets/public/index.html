@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Multi Synth</title>
+  <style>
+    :root {
+      --bg-color: #1C1B1F;
+      --card-bg: #2B2930;
+      --card-border: rgba(73, 69, 79, 0.4);
+      --primary: #D0BCFF;
+      --primary-dark: #381E72;
+      --primary-hover: #E8DEF8;
+      --accent: #D0BCFF;
+      --accent-glow: rgba(208, 188, 255, 0.25);
+      --success: #D0BCFF;
+      --danger: #F2B8B5;
+      --text-main: #E6E1E5;
+      --text-sub: #938F99;
+      --chip-bg: #49454F;
+      --key-white: #E6E1E5;
+      --key-black: #1C1B1F;
+      --key-active: #D0BCFF;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+      gap: 14px;
+      overflow-x: hidden;
+    }
+
+    /* Header */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 8px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      width: 40px;
+      height: 40px;
+      background: #49454F;
+      border: 1px solid rgba(147, 143, 153, 0.3);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    }
+
+    .brand-icon .pulse-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background-color: var(--primary);
+      box-shadow: 0 0 8px var(--accent-glow);
+    }
+
+    h1 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      color: var(--primary);
+    }
+
+    .sub-brand {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-sub);
+      font-weight: 700;
+    }
+
+    .status-badge {
+      font-size: 0.75rem;
+      padding: 6px 12px;
+      border-radius: 20px;
+      background-color: var(--card-bg);
+      border: 1px solid var(--card-border);
+      color: var(--text-sub);
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.3s ease;
+    }
+
+    .status-badge.active {
+      background-color: rgba(208, 188, 255, 0.15);
+      color: var(--primary);
+      border-color: rgba(208, 188, 255, 0.4);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: currentColor;
+    }
+
+    /* Start Audio Engine Button */
+    .btn-audio-start {
+      width: 100%;
+      padding: 16px;
+      background: var(--primary);
+      color: var(--primary-dark);
+      border: none;
+      border-radius: 28px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+      transition: transform 0.1s, background-color 0.2s;
+    }
+
+    .btn-audio-start:active {
+      transform: scale(0.98);
+    }
+
+    .btn-audio-start.running {
+      background: var(--card-bg);
+      border: 1px solid var(--primary);
+      color: var(--primary);
+      box-shadow: none;
+    }
+
+    /* Cards */
+    .card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 28px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .card-title {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-sub);
+      font-weight: 800;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Feature A: Toggle */
+    .toggle-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .toggle-info h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .toggle-info p {
+      font-size: 0.8rem;
+      color: var(--text-sub);
+      margin-top: 2px;
+    }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 68px;
+      height: 38px;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: var(--chip-bg);
+      transition: .3s;
+      border-radius: 38px;
+      border: 1px solid rgba(147, 143, 153, 0.2);
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "OFF";
+      font-size: 0.65rem;
+      font-weight: 900;
+      color: var(--text-sub);
+      height: 30px;
+      width: 30px;
+      left: 3px;
+      bottom: 3px;
+      background-color: #1C1B1F;
+      transition: .3s;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    input:checked + .slider {
+      background-color: var(--primary);
+    }
+
+    input:checked + .slider:before {
+      content: "ON";
+      color: #FFF;
+      background-color: var(--primary-dark);
+      transform: translateX(30px);
+    }
+
+    /* Panic / Mute Button */
+    .btn-panic {
+      background: linear-gradient(135deg, #B3261E 0%, #8C1D18 100%);
+      color: #FFFFFF;
+      border: 1px solid rgba(255, 180, 171, 0.4);
+      border-radius: 8px;
+      padding: 6px 14px;
+      font-size: 0.75rem;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(179, 38, 30, 0.4);
+      transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+    }
+    .btn-panic:active {
+      transform: scale(0.96);
+      background: #791914;
+    }
+
+    /* High Density Telemetry Cards */
+    .telemetry-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .stat-card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .stat-label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-sub);
+      font-weight: 800;
+    }
+
+    .stat-val-group {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+
+    .stat-value {
+      font-size: 1.5rem;
+      font-family: monospace;
+      font-weight: 600;
+      color: var(--primary);
+    }
+
+    .stat-unit {
+      font-size: 0.75rem;
+      color: var(--text-sub);
+    }
+
+    /* Channel Monitor Matrix */
+    .channel-matrix {
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .channel-box {
+      background-color: #1C1B1F;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      aspect-ratio: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      opacity: 0.6;
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.15s ease;
+    }
+
+    .channel-box:hover {
+      opacity: 0.9;
+      border-color: rgba(208, 188, 255, 0.4);
+    }
+
+    .channel-box.active {
+      opacity: 1;
+      background-color: var(--chip-bg);
+      border-color: rgba(208, 188, 255, 0.5);
+    }
+
+    .channel-box.selected {
+      opacity: 1;
+      border: 2px solid var(--primary);
+      box-shadow: 0 0 10px rgba(208, 188, 255, 0.4);
+      background-color: rgba(208, 188, 255, 0.15) !important;
+    }
+
+    .channel-box:active {
+      background-color: rgba(208, 188, 255, 0.1);
+    }
+
+    .channel-num {
+      font-size: 0.6rem;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+
+    .channel-indicator {
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background-color: transparent;
+      margin-top: 2px;
+    }
+
+    .channel-box.active .channel-indicator {
+      background-color: var(--primary);
+      box-shadow: 0 0 6px var(--accent-glow);
+    }
+
+    /* Feature B: Instrument Patch Selector */
+    .patch-active-card {
+      background-color: var(--primary);
+      color: var(--primary-dark);
+      border-radius: 20px;
+      padding: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+      cursor: pointer;
+      user-select: none;
+      transition: transform 0.15s ease, filter 0.15s ease, box-shadow 0.2s ease;
+    }
+
+    .patch-active-card:hover {
+      filter: brightness(1.06);
+      box-shadow: 0 6px 18px rgba(208, 188, 255, 0.35);
+    }
+
+    .patch-active-card:active {
+      transform: scale(0.98);
+      filter: brightness(0.94);
+    }
+
+    .patch-info p {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      opacity: 0.85;
+    }
+
+    .patch-info h4 {
+      font-size: 1rem;
+      font-weight: 800;
+      margin-top: 2px;
+    }
+
+    .patch-icon-badge {
+      background-color: var(--primary-dark);
+      color: var(--primary);
+      padding: 10px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .select-wrapper {
+      position: relative;
+      width: 100%;
+    }
+
+    select {
+      width: 100%;
+      padding: 14px 16px;
+      background-color: #1C1B1F;
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      border-radius: 16px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      outline: none;
+      appearance: none;
+      -webkit-appearance: none;
+      cursor: pointer;
+    }
+
+    select:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .select-wrapper::after {
+      content: '▼';
+      font-size: 0.7rem;
+      color: var(--primary);
+      position: absolute;
+      right: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      pointer-events: none;
+    }
+
+    .file-input-btn {
+      padding: 10px 14px;
+      background-color: rgba(73, 69, 79, 0.3);
+      border: 1px dashed var(--card-border);
+      border-radius: 12px;
+      color: var(--primary);
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-align: center;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .file-input-btn:active {
+      background-color: rgba(73, 69, 79, 0.6);
+    }
+
+    /* Controls Grid */
+    .controls-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .control-item {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .control-item label {
+      font-size: 0.75rem;
+      color: var(--text-sub);
+      font-weight: 600;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--primary);
+    }
+
+    /* Piano Keyboard */
+    .keyboard-container {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .keyboard-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .octave-btn {
+      background-color: #1C1B1F;
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      padding: 6px 12px;
+      border-radius: 10px;
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+
+    .octave-btn:active {
+      background-color: var(--chip-bg);
+    }
+
+    .piano {
+      position: relative;
+      height: 125px;
+      display: flex;
+      width: 100%;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
+      background-color: #000;
+    }
+
+    .key-white {
+      flex: 1;
+      background-color: var(--key-white);
+      border-right: 1px solid #CAC4D0;
+      height: 100%;
+      border-radius: 0 0 6px 6px;
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding-bottom: 8px;
+      font-size: 0.65rem;
+      color: #49454F;
+      font-weight: 800;
+      touch-action: manipulation;
+    }
+
+    .key-white:last-child {
+      border-right: none;
+    }
+
+    .key-black {
+      position: absolute;
+      width: 7%;
+      height: 60%;
+      background-color: var(--key-black);
+      z-index: 2;
+      border-radius: 0 0 6px 6px;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.6);
+      touch-action: manipulation;
+    }
+
+    .key-white.active, .key-black.active {
+      background-color: var(--primary) !important;
+      color: var(--primary-dark) !important;
+      box-shadow: 0 0 14px var(--accent-glow);
+    }
+
+    /* MIDI Monitor Log */
+    .midi-log {
+      height: 85px;
+      background-color: #1C1B1F;
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 10px;
+      font-family: monospace;
+      font-size: 0.75rem;
+      color: var(--primary);
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .log-entry {
+      opacity: 0.9;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="brand">
+      <div class="brand-icon">
+        <div class="pulse-dot"></div>
+      </div>
+      <div>
+        <h1>Multi Synth</h1>
+        <div class="sub-brand">SF2 Synth Engine</div>
+      </div>
+    </div>
+    <div id="statusBadge" class="status-badge">
+      <span class="status-dot"></span>
+      <span id="statusText">Audio Idle</span>
+    </div>
+  </header>
+
+  <!-- Start Engine -->
+  <button id="btnStartAudio" class="btn-audio-start">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M8 5v14l11-7z"/>
+    </svg>
+    Start Audio Engine
+  </button>
+
+  <!-- Feature A: Virtual MIDI Toggle -->
+  <section class="card">
+    <div class="toggle-row">
+      <div class="toggle-info">
+        <h3>MIDI Interface Status</h3>
+        <p id="midiStatusDesc">Listening to connected MIDI devices</p>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="midiToggle" checked />
+        <span class="slider"></span>
+      </label>
+    </div>
+  </section>
+
+  <!-- High Density Telemetry Cards -->
+  <section class="telemetry-grid">
+    <div class="stat-card">
+      <span class="stat-label">Active Voices</span>
+      <div class="stat-val-group">
+        <span id="activeVoicesVal" class="stat-value">0</span>
+        <span class="stat-unit">/ 48</span>
+      </div>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Polyphony Load</span>
+      <div class="stat-val-group">
+        <span id="engineLoadVal" class="stat-value">0%</span>
+        <span class="stat-unit">of capacity</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- High Density Channel Monitor Grid -->
+  <section class="card" style="padding: 14px;">
+    <div class="card-title" style="display: flex; justify-content: space-between; align-items: center;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span>Channel Monitor</span>
+        <span id="portCount" style="font-weight:normal; text-transform:none; color:var(--primary); font-size:0.75rem;">0 Devices Connected</span>
+      </div>
+      <button id="btnPanic" class="btn-panic" title="Silence all channels and kill stuck notes immediately">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/>
+        </svg>
+        PANIC / MUTE
+      </button>
+    </div>
+    <div id="channelGrid" class="channel-matrix">
+      <!-- 16 Channel Boxes -->
+      <div class="channel-box" data-ch="0"><span class="channel-num">01</span><div class="channel-indicator"></div></div>
+      <div class="channel-box" data-ch="1"><span class="channel-num">02</span><div class="channel-indicator"></div></div>
+      <div class="channel-box" data-ch="2"><span class="channel-num">03</span><div class="channel-indicator"></div></div>
+      <div class="channel-box" data-ch="3"><span class="channel-num">04</span><div class="channel-indicator"></div></div>
+      <div class="channel-box" data-ch="4"><span class="channel-num">05</span><div class="channel-indicator"></div></div>
+      <div class="channel-box" data-ch="5"><span class="channel-num">06</span><div class="channel-indicator"></div></div>
+      <div class="channel-box" data-ch="6"><span class="channel-num">07</span><div class="channel-indicator"></div></div>
+      <div class="channel-box" data-ch="7"><span class="channel-num">08</span><div class="channel-indicator"></div></div>
+      <div class="channel-box" data-ch="8"><span class="channel-num">09</span><div class="channel-indicator"></div></div>
+      <div class="channel-box" data-ch="9"><span class="channel-num">10</span><div class="channel-indicator"></div></div>
+      <div class="channel-box" data-ch="10"><span class="channel-num">11</span><div class="channel-indicator"></div></div>
+      <div class="channel-box" data-ch="11"><span class="channel-num">12</span><div class="channel-indicator"></div></div>
+      <div class="channel-box" data-ch="12"><span class="channel-num">13</span><div class="channel-indicator"></div></div>
+      <div class="channel-box" data-ch="13"><span class="channel-num">14</span><div class="channel-indicator"></div></div>
+      <div class="channel-box" data-ch="14"><span class="channel-num">15</span><div class="channel-indicator"></div></div>
+      <div class="channel-box" data-ch="15"><span class="channel-num">16</span><div class="channel-indicator"></div></div>
+    </div>
+    <details style="margin-top: 12px; border-top: 1px solid var(--card-border); padding-top: 12px;">
+      <summary style="font-size: 0.75rem; font-weight: 800; color: var(--primary); cursor: pointer; outline: none; list-style: none; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+        <span>📋 VIEW CHANNEL PATCH MAP</span>
+        <span style="font-size: 0.65rem; color: var(--text-sub);">▼ Tap to Expand</span>
+      </summary>
+      <div id="channelPatchList" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; max-height: 320px; overflow-y: auto; padding-right: 4px;">
+        <!-- Filled dynamically in app.js -->
+      </div>
+    </details>
+  </section>
+
+  <!-- Feature B: SoundFont Patch Selector & Active Patch display -->
+  <section class="card">
+    <div class="card-title" id="soundfontCardTitle" style="cursor: pointer; user-select: none; display: flex; justify-content: space-between; align-items: center;" title="Click to load a SoundFont bank (.sf2 / .sf3)">
+      <span>Soundfont & Active Patch</span>
+      <span style="font-size: 0.7rem; color: var(--primary); font-weight: 600; display: flex; align-items: center; gap: 4px;">
+        📁 Tap to Load Bank
+      </span>
+    </div>
+
+    <div class="patch-active-card" id="patchActiveCard" title="Tap to load a SoundFont bank (.sf2)">
+      <div class="patch-info">
+        <p id="patchTargetChannelLabel">Target Channel: All Channels (Omni)</p>
+        <h4 id="activePatchDisplay">No Active Patch</h4>
+      </div>
+      <div class="patch-icon-badge" title="Tap to load SoundFont (.sf2)">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+        </svg>
+      </div>
+    </div>
+
+    <div class="select-wrapper">
+      <select id="presetSelect" disabled>
+        <option value="">No Presets Loaded</option>
+      </select>
+    </div>
+
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+      <div style="display:flex; gap:8px;">
+        <button id="btnClearCache" class="file-input-btn" style="border-color:var(--danger); color:var(--danger); background:rgba(242,184,181,0.1); white-space:nowrap; margin:0; border-style:solid;">
+          🧹 Clear Cache
+        </button>
+      </div>
+      <input type="file" id="sfFileInput" accept=".sf2,.sf3,.soundfont" style="display:none;" />
+      <div style="text-align:right; min-width:0; flex-shrink:1;">
+        <div id="sfName" style="font-size:0.75rem; font-weight:700; color:var(--primary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:160px;">No SoundFont Loaded</div>
+        <div id="presetCountTag" style="font-size:0.7rem; color:var(--text-sub);">0 Presets</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Feature: MIDI File Player -->
+  <section class="card">
+    <div class="card-title">
+      <span>MIDI File Player</span>
+      <span id="playerStatus" style="font-weight:normal; text-transform:none; color:var(--primary);">Stopped</span>
+    </div>
+    
+    <div style="display:flex; flex-direction:column; gap:12px;">
+      <!-- File Display and Selector -->
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+        <label class="file-input-btn" for="midiFileInput" style="white-space:nowrap; margin:0;">
+          🎵 Load MIDI
+        </label>
+        <input type="file" id="midiFileInput" accept=".mid,.midi" style="display:none;" />
+        <div style="text-align:right; min-width:0; flex-shrink:1;">
+          <div id="midiFileName" style="font-size:0.85rem; font-weight:700; color:var(--primary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:180px;">No Song Loaded</div>
+          <div id="midiTimeDisplay" style="font-size:0.75rem; color:var(--text-sub);">00:00 / 00:00</div>
+        </div>
+      </div>
+
+      <!-- Playback Progress Slider -->
+      <div style="display:flex; align-items:center; gap:10px;">
+        <input type="range" id="midiProgressSlider" min="0" max="100" value="0" disabled style="flex-grow:1;" />
+      </div>
+
+      <!-- Lock Custom Patches Option -->
+      <div style="display:flex; justify-content:space-between; align-items:center; padding: 6px 0; border-top: 1px dashed rgba(147, 143, 153, 0.2); border-bottom: 1px dashed rgba(147, 143, 153, 0.2); margin-top: 4px;">
+        <div style="display:flex; flex-direction:column; gap: 2px;">
+          <span style="font-size:0.85rem; font-weight:600; color:var(--text-main);">Lock Channel Patches</span>
+          <span style="font-size:0.7rem; color:var(--text-sub);">When on, filters Program Change (PC) &amp; Bank Select (CC 0/32)</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="ignoreMidiProgramsToggle" />
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <!-- Controls Row -->
+      <div style="display:flex; justify-content:center; align-items:center; gap:16px; margin-top:4px;">
+        <button id="btnMidiPlay" class="file-input-btn" style="border-style:solid; border-color:var(--primary); color:var(--primary); background:rgba(208, 188, 255, 0.15); width:110px; padding:12px 16px;" disabled>
+          ▶ Play
+        </button>
+        <button id="btnMidiStop" class="file-input-btn" style="border-style:solid; width:110px; padding:12px 16px;" disabled>
+          ■ Stop
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Audio Controls -->
+  <section class="card">
+    <div class="controls-grid">
+      <div class="control-item">
+        <label>Master Volume: <span id="volVal" style="color:var(--primary); font-weight:700;">80%</span></label>
+        <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.8" />
+      </div>
+      <div class="control-item">
+        <label>Target Channel</label>
+        <select id="channelSelect" style="padding:10px; font-size:0.85rem; border-radius:12px;">
+          <option value="all">All Channels (Omni)</option>
+          <option value="0">Channel 1</option>
+          <option value="1">Channel 2</option>
+          <option value="2">Channel 3</option>
+          <option value="3">Channel 4</option>
+          <option value="4">Channel 5</option>
+          <option value="5">Channel 6</option>
+          <option value="6">Channel 7</option>
+          <option value="7">Channel 8</option>
+          <option value="8">Channel 9</option>
+          <option value="9">Channel 10 (Drums)</option>
+          <option value="10">Channel 11</option>
+          <option value="11">Channel 12</option>
+          <option value="12">Channel 13</option>
+          <option value="13">Channel 14</option>
+          <option value="14">Channel 15</option>
+          <option value="15">Channel 16</option>
+        </select>
+      </div>
+    </div>
+  </section>
+
+  <!-- Reverb Effects Processor -->
+  <section class="card">
+    <div class="card-title">
+      <span>Acoustic Reverb FX</span>
+      <span id="reverbStatus" style="font-weight:normal; text-transform:none; color:var(--primary);">Active</span>
+    </div>
+    <div class="controls-grid">
+      <div class="control-item">
+        <label>Reverb Mix (Wet): <span id="reverbMixVal" style="color:var(--primary); font-weight:700;">30%</span></label>
+        <input type="range" id="reverbMixSlider" min="0" max="1" step="0.05" value="0.30" />
+      </div>
+      <div class="control-item">
+        <label>Decay Time: <span id="reverbDecayVal" style="color:var(--primary); font-weight:700;">2.0s</span></label>
+        <input type="range" id="reverbDecaySlider" min="0.5" max="5.0" step="0.1" value="2.0" />
+      </div>
+    </div>
+  </section>
+
+  <!-- Keyboard UI -->
+  <section class="card keyboard-container">
+    <div class="keyboard-header">
+      <div class="card-title" style="margin:0;">On-Screen Synthesizer Keys</div>
+      <div style="display:flex; gap:6px; align-items:center;">
+        <button id="btnOctaveDown" class="octave-btn">- Oct</button>
+        <span id="octaveLabel" style="font-size:0.8rem; font-weight:700; color:var(--primary);">C4 - E5</span>
+        <button id="btnOctaveUp" class="octave-btn">+ Oct</button>
+      </div>
+    </div>
+    <div class="piano" id="pianoContainer"></div>
+  </section>
+
+  <!-- MIDI Monitor Log -->
+  <section class="card" style="padding:14px;">
+    <div class="card-title" style="margin-bottom:6px;">
+      <span>MIDI Signal Activity Monitor</span>
+    </div>
+    <div id="midiLog" class="midi-log">
+      <div class="log-entry">[System] SF2 Synth Engine Ready</div>
+    </div>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>

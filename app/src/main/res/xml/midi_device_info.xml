@@ -1,0 +1,5 @@
+<devices xmlns:android="http://schemas.android.com/apk/res/android">
+    <device manufacturer="AI Studio" product="Virtual SoundFont Synth" max-input-ports="1" max-output-ports="0">
+        <input-port name="input" />
+    </device>
+</devices>

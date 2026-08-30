@@ -1,0 +1,26 @@
+# ==============================================================================
+# SoundFonts & Audio Sample Containers
+# ==============================================================================
+*.sf2           filter=lfs diff=lfs merge=lfs -text
+*.sf3           filter=lfs diff=lfs merge=lfs -text
+*.sf4           filter=lfs diff=lfs merge=lfs -text
+*.SF2           filter=lfs diff=lfs merge=lfs -text
+*.SF3           filter=lfs diff=lfs merge=lfs -text
+*.dls           filter=lfs diff=lfs merge=lfs -text
+*.gig           filter=lfs diff=lfs merge=lfs -text
+
+# ==============================================================================
+# TensorFlow Lite & LiteRT Model Binaries
+# ==============================================================================
+*.tflite        filter=lfs diff=lfs merge=lfs -text
+*.TFLITE        filter=lfs diff=lfs merge=lfs -text
+*.litert        filter=lfs diff=lfs merge=lfs -text
+*.LITERT        filter=lfs diff=lfs merge=lfs -text
+*.litertlm      filter=lfs diff=lfs merge=lfs -text
+*.task          filter=lfs diff=lfs merge=lfs -text
+*.quant         filter=lfs diff=lfs merge=lfs -text
+*.pb            filter=lfs diff=lfs merge=lfs -text
+*.bin           filter=lfs diff=lfs merge=lfs -text
+*.params        filter=lfs diff=lfs merge=lfs -text
+*.spm           filter=lfs diff=lfs merge=lfs -text
+*.model         filter=lfs diff=lfs merge=lfs -text
