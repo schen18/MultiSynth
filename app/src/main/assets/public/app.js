@@ -1323,33 +1323,38 @@ class MidiParser {
 
     function readString(len) {
       let str = "";
-      for (let i = 0; i < len; i++) {
+      for (let i = 0; i < len && offset < arrayBuffer.byteLength; i++) {
         str += String.fromCharCode(data.getUint8(offset++));
       }
       return str;
     }
 
     function readUint16() {
+      if (offset + 2 > arrayBuffer.byteLength) return 0;
       const val = data.getUint16(offset, false); // Big endian for MIDI files
       offset += 2;
       return val;
     }
 
     function readUint32() {
+      if (offset + 4 > arrayBuffer.byteLength) return 0;
       const val = data.getUint32(offset, false); // Big endian for MIDI files
       offset += 4;
       return val;
     }
 
     function readUint8() {
+      if (offset >= arrayBuffer.byteLength) return 0;
       return data.getUint8(offset++);
     }
 
     function readVLQ() {
       let value = 0;
-      while (true) {
+      let count = 0;
+      while (offset < arrayBuffer.byteLength && count < 4) {
         const byte = readUint8();
         value = (value << 7) | (byte & 0x7F);
+        count++;
         if (!(byte & 0x80)) {
           break;
         }
@@ -1357,9 +1362,25 @@ class MidiParser {
       return value;
     }
 
-    const headerType = readString(4);
+    let headerType = readString(4);
     if (headerType !== "MThd") {
-      throw new Error("Invalid MIDI file: Missing MThd header");
+      // Look for "MThd" elsewhere in the first 2048 bytes (e.g., RIFF/RMID wrappers or ID3/junk headers)
+      let found = false;
+      const scanLimit = Math.min(arrayBuffer.byteLength - 4, 2048);
+      for (let i = 0; i < scanLimit; i++) {
+        if (data.getUint8(i) === 0x4D && // 'M'
+            data.getUint8(i + 1) === 0x54 && // 'T'
+            data.getUint8(i + 2) === 0x68 && // 'h'
+            data.getUint8(i + 3) === 0x64) {  // 'd'
+          offset = i + 4;
+          headerType = "MThd";
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        throw new Error("Invalid MIDI file: Missing MThd header");
+      }
     }
 
     const headerLength = readUint32();
@@ -1367,34 +1388,41 @@ class MidiParser {
     const numTracks = readUint16();
     const division = readUint16();
 
+    // Skip extra header bytes if headerLength > 6
+    if (headerLength > 6) {
+      offset += (headerLength - 6);
+    }
+
     // division: if MSB is 0, it's ticks per beat (quarter note)
     if (division & 0x8000) {
       throw new Error("SMPTE division format in MIDI files is not supported.");
     }
-    const ticksPerBeat = division;
+    const ticksPerBeat = division || 480;
 
     const tracks = [];
 
     // Parse each track
-    for (let t = 0; t < numTracks; t++) {
-      if (offset >= arrayBuffer.byteLength) break;
+    while (offset < arrayBuffer.byteLength - 8 && tracks.length < numTracks) {
       const trackType = readString(4);
       if (trackType !== "MTrk") {
+        if (offset + 4 > arrayBuffer.byteLength) break;
         const size = readUint32();
-        offset += size;
+        offset = Math.min(offset + size, arrayBuffer.byteLength);
         continue;
       }
 
       const trackSize = readUint32();
-      const trackEnd = offset + trackSize;
+      const trackEnd = Math.min(offset + trackSize, arrayBuffer.byteLength);
       const events = [];
       let ticks = 0;
       let lastStatus = 0; // for running status
 
       while (offset < trackEnd) {
+        if (offset >= arrayBuffer.byteLength) break;
         const deltaTime = readVLQ();
         ticks += deltaTime;
 
+        if (offset >= arrayBuffer.byteLength) break;
         let status = readUint8();
 
         // Running status handling
@@ -1411,8 +1439,14 @@ class MidiParser {
 
         if (command >= 0x80 && command <= 0xEF) {
           lastStatus = status;
+          if (offset >= arrayBuffer.byteLength) break;
           const data1 = readUint8();
-          const data2 = (command === 0xC0 || command === 0xD0) ? 0 : readUint8();
+          let data2 = 0;
+          if (command !== 0xC0 && command !== 0xD0) {
+            if (offset < arrayBuffer.byteLength) {
+              data2 = readUint8();
+            }
+          }
           events.push({
             ticks: ticks,
             status: status,
@@ -1422,11 +1456,14 @@ class MidiParser {
             data2: data2
           });
         } else if (status === 0xFF) {
-          // Meta Event
+          // Meta Event clears running status per SMF spec
+          lastStatus = 0;
+          if (offset >= arrayBuffer.byteLength) break;
           const metaType = readUint8();
           const length = readVLQ();
-          const metaData = new Uint8Array(arrayBuffer, offset, length);
-          offset += length;
+          const safeLen = Math.min(length, arrayBuffer.byteLength - offset);
+          const metaData = new Uint8Array(arrayBuffer, offset, safeLen);
+          offset += safeLen;
           events.push({
             ticks: ticks,
             status: 0xFF,
@@ -1434,11 +1471,12 @@ class MidiParser {
             metaData: metaData
           });
         } else if (status === 0xF0 || status === 0xF7) {
-          // Sysex
+          // SysEx clears running status
+          lastStatus = 0;
           const length = readVLQ();
-          offset += length;
+          offset = Math.min(offset + length, arrayBuffer.byteLength);
         } else {
-          // Skip other system common / real-time bytes
+          // Skip other status
         }
       }
 
@@ -1454,7 +1492,7 @@ class MidiParser {
 }
 
 function convertMidiToTimeline(parsedMidi) {
-  const ticksPerBeat = parsedMidi.ticksPerBeat;
+  const ticksPerBeat = parsedMidi.ticksPerBeat || 480;
   const allEvents = [];
 
   parsedMidi.tracks.forEach((track, trackIndex) => {
@@ -1811,8 +1849,14 @@ class App {
             this.logMidi(`[Warning] Could not cache to storage: ${err.message}`);
           }
         };
+        reader.onerror = (err) => {
+          console.error("FileReader error:", reader.error);
+          this.logMidi(`[SoundFont Error] Could not read file: ${reader.error?.message || "Read error"}`);
+          alert("Error reading SoundFont file. Please check file permissions.");
+        };
         reader.readAsArrayBuffer(file);
       }
+      e.target.value = "";
     });
 
     // Clicking "Soundfont & Active Patch" header or the active patch card opens the SoundFont bank file picker
@@ -1943,6 +1987,7 @@ class App {
       this.midiFileInput.addEventListener("change", (e) => {
         const file = e.target.files[0];
         if (file) {
+          this.logMidi(`[Player] Reading MIDI file: ${file.name} (${file.size} bytes)...`);
           const reader = new FileReader();
           reader.onload = (evt) => {
             this.logMidi(`[Player] Parsing MIDI file: ${file.name}...`);
@@ -1962,8 +2007,14 @@ class App {
               alert("Error parsing MIDI. Please verify it is a valid Standard MIDI File (SMF).");
             }
           };
+          reader.onerror = (err) => {
+            console.error("FileReader error:", reader.error);
+            this.logMidi(`[Player Error] Could not read file: ${reader.error?.message || "Read error"}`);
+            alert("Error reading MIDI file. Please check file permissions.");
+          };
           reader.readAsArrayBuffer(file);
         }
+        e.target.value = "";
       });
     }
 

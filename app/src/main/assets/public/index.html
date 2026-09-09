@@ -732,7 +732,7 @@
           🧹 Clear Cache
         </button>
       </div>
-      <input type="file" id="sfFileInput" accept=".sf2,.sf3,.soundfont" style="display:none;" />
+      <input type="file" id="sfFileInput" accept=".sf2,.sf3,.soundfont,application/octet-stream,*/*" style="display:none;" />
       <div style="text-align:right; min-width:0; flex-shrink:1;">
         <div id="sfName" style="font-size:0.75rem; font-weight:700; color:var(--primary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:160px;">No SoundFont Loaded</div>
         <div id="presetCountTag" style="font-size:0.7rem; color:var(--text-sub);">0 Presets</div>
@@ -753,7 +753,7 @@
         <label class="file-input-btn" for="midiFileInput" style="white-space:nowrap; margin:0;">
           🎵 Load MIDI
         </label>
-        <input type="file" id="midiFileInput" accept=".mid,.midi" style="display:none;" />
+        <input type="file" id="midiFileInput" accept=".mid,.midi,audio/midi,audio/x-midi,audio/sp-midi,audio/mid,application/x-midi,*/*" style="display:none;" />
         <div style="text-align:right; min-width:0; flex-shrink:1;">
           <div id="midiFileName" style="font-size:0.85rem; font-weight:700; color:var(--primary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:180px;">No Song Loaded</div>
           <div id="midiTimeDisplay" style="font-size:0.75rem; color:var(--text-sub);">00:00 / 00:00</div>

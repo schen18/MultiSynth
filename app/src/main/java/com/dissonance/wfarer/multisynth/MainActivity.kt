@@ -101,10 +101,21 @@ class MainActivity : ComponentActivity() {
                             filePathCallback?.onReceiveValue(null)
                             filePathCallback = callback
                             try {
-                                val intent = params.createIntent()
+                                var intent: Intent? = null
+                                try {
+                                    intent = params.createIntent()
+                                } catch (_: Exception) {}
+                                if (intent == null) {
+                                    intent = Intent(Intent.ACTION_GET_CONTENT).apply {
+                                        addCategory(Intent.CATEGORY_OPENABLE)
+                                        type = "*/*"
+                                    }
+                                }
                                 fileChooserLauncher.launch(intent)
                                 true
                             } catch (e: Exception) {
+                                Log.e("MainActivity", "Error launching file chooser", e)
+                                filePathCallback?.onReceiveValue(null)
                                 filePathCallback = null
                                 false
                             }
@@ -343,10 +354,9 @@ fun SynthWebView(
 
                 settings.javaScriptEnabled = true
                 settings.domStorageEnabled = true
-                // All content is served via the https://appassets.androidplatform.net
-                // asset loader; file/content access is unnecessary attack surface.
                 settings.allowFileAccess = false
-                settings.allowContentAccess = false
+                // Allow content access so local content:// URIs selected via the file chooser can be read by JS FileReader
+                settings.allowContentAccess = true
                 settings.mediaPlaybackRequiresUserGesture = false
 
                 addJavascriptInterface(AndroidSynthBridge(context), "AndroidBridge")
